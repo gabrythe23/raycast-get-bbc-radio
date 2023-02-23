@@ -41,5 +41,5 @@
     "lint": "ray lint",
     "publish": "ray publish"
   },
-  "version": "1.0.1"
+  "version": "1.0.4"
 }

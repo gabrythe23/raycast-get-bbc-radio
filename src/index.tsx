@@ -1,54 +1,35 @@
-import { ActionPanel, Action, Icon, List, showHUD } from "@raycast/api";
-import * as cheerio from "cheerio";
-import fetch from "node-fetch";
-import { useState } from "react";
+import React from "react";
+import { List } from "@raycast/api";
+import { TrackListItem } from "./components/TrackListItem";
+import { StationListItem } from "./components/StationListItem";
+import { useBBCRadio } from "./hooks/useBBCRadio";
 
-interface RadioStation {
-  id?: string;
-  title?: string;
-  image?: string;
-  whosPlaying?: string;
-}
+const Command: React.FC = () => {
+  const { bbcRadioStations, tracks, isLoading, selectedStation, fetchTracks } = useBBCRadio();
 
-async function getBBCRadioStationsFromWebSite(): Promise<RadioStation[]> {
-  const RadioStations: RadioStation[] = [];
-  const response = await fetch("https://www.bbc.co.uk/sounds");
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  for (const station of $("ul.sc-o-scrollable__list>li.gs-u-align-top")) {
-    RadioStations.push({
-      id: $(station).find(".sc-c-network-item__link").attr("href"),
-      image: $(station).find(".sc-o-responsive-image__img").attr("src"),
-      title: $(station).find(".gs-u-display-block").text(),
-      whosPlaying: $(station).find(".sc-c-network-item__bottom").text(),
-    });
+  if (selectedStation && tracks[selectedStation]) {
+    return (
+      <List
+        navigationTitle={`Last Tracks - ${bbcRadioStations.find((s) => s.id === selectedStation)?.title}`}
+        isLoading={isLoading}
+        searchBarPlaceholder="Search tracks..."
+      >
+        <List.Section title="Last Played Tracks">
+          {tracks[selectedStation].map((track, index) => (
+            <TrackListItem key={`${selectedStation}_${index}`} track={track} />
+          ))}
+        </List.Section>
+      </List>
+    );
   }
-  return RadioStations;
-}
-
-export default function Command() {
-  const [bbcRadioStations, setBBcRadioStations] = useState<RadioStation[]>([]);
-
-  getBBCRadioStationsFromWebSite()
-    .then((data) => setBBcRadioStations(data))
-    .catch((error) => showHUD(error.message));
 
   return (
-    <List isLoading={bbcRadioStations.length === 0}>
-      {bbcRadioStations.map((item) => (
-        <List.Item
-          key={item.id}
-          icon={item.image || Icon.Globe}
-          title={item.title || ""}
-          accessories={[{ text: item.whosPlaying }]}
-          actions={
-            <ActionPanel>
-              <Action.OpenInBrowser url={`https://www.bbc.co.uk${item.id}`} />
-              <Action.CopyToClipboard title="Copy To Clipboard" content={`https://www.bbc.co.uk${item.id}`} />
-            </ActionPanel>
-          }
-        />
+    <List isLoading={isLoading} searchBarPlaceholder="Search BBC Radio stations...">
+      {bbcRadioStations.map((station) => (
+        <StationListItem key={station.id} station={station} onSelectStation={fetchTracks} />
       ))}
     </List>
   );
-}
+};
+
+export default Command;
